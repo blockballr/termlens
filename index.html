@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coartifex - a gacha relic co-pilot for people and their agents</title>
+  <meta name="description" content="A browser companion that scores relics, suggests builds, and plans your farm route. Exposes WebMCP tools so an AI agent can do it with you." />
+  <!-- Open Graph: replace the example URLs with the real deploy URL before going live. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Coartifex" />
+  <meta property="og:title" content="Coartifex - a gacha relic co-pilot for people and their agents" />
+  <meta property="og:description" content="Score relics, plan builds, and decide what to farm next. WebMCP tools let an AI agent help, while you approve every save." />
+  <meta property="og:url" content="https://coartifex.example/" />
+  <meta property="og:image" content="https://coartifex.example/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Coartifex relic co-pilot interface" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Coartifex</h1>
+      <p class="muted">A gacha relic co-pilot built for people <em>and</em> their agents. Score relics, plan builds, decide what to farm next, and stay in control of every save.</p>
+    </div>
+    <span id="webmcp-status" class="badge">WebMCP: checking...</span>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>1. Pick your game</h2>
+      <p class="muted small">Coartifex is profile-driven, so it works for any gacha. Ship HSR and Genshin, or paste your own profile JSON.</p>
+      <div class="row">
+        <select id="profile"></select>
+        <button type="button" id="import-profile">Load imported profile</button>
+      </div>
+      <textarea id="profile-json" rows="3" placeholder='Paste a profile JSON: { "id", "label", "slots", "substats", "roleWeights", "sets", "characters" }'></textarea>
+    </section>
+
+    <section class="panel">
+      <h2>2. Add a relic</h2>
+      <div class="row">
+        <select id="relic-slot"></select>
+        <select id="relic-set"></select>
+        <select id="relic-main"></select>
+      </div>
+      <div class="row">
+        <input id="relic-label" type="text" placeholder="nickname (optional)" />
+        <button type="button" id="add-relic">Add relic</button>
+      </div>
+      <h3>Substats</h3>
+      <div id="substat-rows"></div>
+      <button type="button" id="add-substat" class="mini">+ add substat</button>
+    </section>
+
+    <section class="panel">
+      <h2>3. Your inventory</h2>
+      <div id="inventory" class="grid"></div>
+    </section>
+
+    <section class="panel">
+      <h2>4. Advisor</h2>
+      <div class="row">
+        <select id="advisor-character"></select>
+        <button type="button" id="suggest-btn">Suggest build</button>
+        <button type="button" id="plan-btn">Plan farm</button>
+      </div>
+      <div id="advisor-output"></div>
+    </section>
+
+    <section class="panel">
+      <h2>5. Saved loadouts</h2>
+      <div id="loadouts" class="grid"></div>
+    </section>
+
+    <section class="panel">
+      <h2>6. Session receipts &amp; agent gate</h2>
+      <p class="muted small">Every tool call is logged as a receipt, and mutating actions only happen after your approval. Turn on the lock to revoke the agent's ability to save entirely.</p>
+      <div class="row">
+        <label><input type="checkbox" id="write-lock" /> Lock saving (revoke agent writes)</label>
+        <button type="button" id="export-receipts" class="mini">Export receipts (JSON)</button>
+        <button type="button" id="clear-receipts" class="mini">Clear</button>
+      </div>
+      <div id="receipts" class="receipts"></div>
+    </section>
+  </main>
+
+  <div id="confirm" class="confirm hidden">
+    <span class="confirm-text"></span>
+    <button type="button" id="confirm-approve">Approve</button>
+    <button type="button" id="confirm-reject" class="mini">Reject</button>
+  </div>
+
+  <footer>
+    <p class="muted small">Everything runs in your browser. No account, no server, no upload. WebMCP lets an agent call the same tools you use above.</p>
+  </footer>
+
+  <script src="src/profiles.js"></script>
+  <script src="src/engine.js"></script>
+  <script src="src/state.js"></script>
+  <script src="src/tools.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>
