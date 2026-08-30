@@ -1,67 +1,70 @@
-# Coartifex
+# TermLens
 
-A gacha relic co-pilot built for **people and their agents**. You paste the relics
-you pulled, and Coartifex scores them, suggests a build, and tells you which
-domain to farm next. Because it exposes **WebMCP** tools, an AI agent (ChatGPT's
-in-app browser, or Chrome with WebMCP enabled) can do all of that *with* you, in
-the same page, while you stay in control of every save.
+Review a contract or agreement with your **agent**. TermLens lets an AI agent
+read a document and propose the key terms (renewal date, termination, notice
+period, payment, amounts, governing law, obligations, confidentiality,
+non-compete, liability cap). Each proposed term is **grounded to the exact
+sentence it came from** and confidence-scored, and nothing commits without your
+approval.
 
-This is a real, usable companion for any gacha that follows the familiar
-relic/artifact model (Honkai: Star Rail, Genshin Impact, and others through
-imported profiles). It runs entirely in your browser: no account, no server, no
-upload of your account data.
+Because it exposes **WebMCP** tools, an agent in ChatGPT's in-app browser (or
+Chrome with WebMCP enabled) can do the tedious extraction *with* you, in the same
+page, while you stay in control of every committed term. It runs entirely in
+your browser: no account, no server, no upload of the contract.
 
 ## Why WebMCP is the right fit
 
-Gacha players describe relic farming as "hell": weeks of RNG for one usable piece,
-spreadsheets to decide keep vs feed, and constant "is this piece good?" questions.
-The pain is exactly the kind WebMCP targets:
+Extracting terms from contracts is exactly the kind of task WebMCP targets: an
+agent can call typed tools instead of guessing at the DOM, and a human can verify
+each result before it's taken on faith.
 
-- **Structured tools instead of UI guessing.** An agent calls `evaluate_relic`,
-  `suggest_build`, `plan_farm_route`, and `recommend_wishes` with typed inputs,
-  not by scraping the DOM and clicking.
-- **People and agents share one surface.** The human adds relics and approves;
-  the agent reasons over them and explains tradeoffs in plain language.
-- **Human-in-the-loop for anything destructive.** Saving a loadout is a two-step
-  `save_loadout` (stages a token) then `confirm_loadout` (commits only after the
-  human approves in the UI). The agent can never silently write your loadout.
-- **Read-only by default.** Five of seven tools are marked `readOnlyHint: true`;
-  only the save/confirm pair mutate state, and only behind confirmation.
+- **Structured tools instead of UI guessing.** The agent calls `extract_terms`,
+  `propose_term`, and `summarize_terms` with typed inputs, not by scraping and
+  clicking.
+- **Grounding, not "trust me bro."** Every proposed term carries the source
+  quote it came from and a confidence score. If the value isn't actually in the
+  contract, the term is marked **ungrounded and low-confidence**, so you know
+  exactly where to look before you approve.
+- **People and agents share one surface.** The agent extracts; the human approves,
+  edits, or rejects each term. The agent can never silently commit.
+- **Human-in-the-loop for anything that changes state.** `propose_term` stages a
+  term and returns a token; `approve_term` commits it only after the human
+  approves in the UI.
+- **Read-only by default.** `describe_page`, `extract_terms`, and `summarize_terms`
+  are marked `readOnlyHint: true`; only the propose/approve/reject tools mutate
+  state, and only behind confirmation.
 
 ## The tools
 
 | Tool | Read-only | What it does |
 | --- | --- | --- |
-| `describe_game` | yes | Lists slots, stats, sets, characters of the active profile |
-| `evaluate_relic` | yes | Scores a relic and names its best-fitting characters |
-| `suggest_build` | yes | Picks the best relics per slot and estimates set bonus + DPS |
-| `plan_farm_route` | yes | Recommends which domain to farm for a character's set |
-| `recommend_wishes` | yes | Pity math: can you guarantee the banner? |
-| `save_loadout` | no | Stages a loadout, returns a confirmation token |
-| `confirm_loadout` | no | Commits a staged loadout after human approval |
+| `describe_page` | yes | Whether a contract is loaded, its size, and term state |
+| `extract_terms` | yes | Scans for candidate key terms with source quotes + confidence |
+| `propose_term` | no | Stages one term, grounded to a source quote; returns a token |
+| `propose_terms` | no | Stages several terms at once |
+| `approve_term` | no | Commits a staged term after human approval |
+| `reject_term` | no | Discards a staged term |
+| `summarize_terms` | yes | Returns approved terms with their source quotes |
 
 ## Verifiable by construction
 
-WebMCP puts an agent in the page, so Coartifex is built to keep the human in
-control of every state change:
+- **Source attribution.** Every approved term stores the quote it was grounded
+  to, so the review is auditable rather than taken on faith.
+- **Confidence + grounding.** Low-confidence or ungrounded terms are flagged and
+  visually warned so the human's attention goes where it's needed.
+- **Session receipts.** Every tool call, human or agent, is logged as a receipt:
+  tool, inputs, outcome. Export the log as JSON anytime.
+- **Owner-controlled lock.** A "Lock committing" switch revokes the agent's
+  ability to commit anything.
 
-- **Session receipts.** Every tool call, whether from the human or the agent, is
-  logged as a receipt: tool name, inputs, outcome, and (for mutating actions)
-  whether it was approved or rejected. Export the whole log as JSON anytime.
-- **Gate before write.** `save_loadout` only stages a change; `confirm_loadout`
-  commits it after the human approves in the UI. The agent can never silently
-  write your loadout.
-- **Owner-controlled lock.** A "Lock saving" switch revokes the agent's ability to
-  save at all. Turn it on and every mutating call is refused.
-
-All of it stays local: the receipt log is in the browser and exportable as JSON,
-never uploaded. That is what makes pointing an agent at your relics safe.
+All local: the contract text, receipts, and approved terms stay in the browser
+and are exportable, never uploaded.
 
 ## Run it locally
 
 ```bash
 # from this folder
-python3 -m http.server 8080
+python -m http.server 8080
 # open http://localhost:8080
 ```
 
@@ -72,8 +75,8 @@ To let an agent drive it from Chrome, enable the flag:
 3. Open the page, then use the Model Context Tool Inspector extension (or an
    agent in ChatGPT's in-app browser) to call the tools.
 
-The app also works fully by hand: the Advisor buttons call the same engine the
-agent uses.
+The page also works fully by hand: paste a contract, load the sample, and approve
+or reject terms directly.
 
 ## Deploy
 
@@ -82,31 +85,13 @@ GitHub Pages, or ChatGPT Sites. No build step, no backend. The `_headers` file
 keeps the `tools` Permissions-Policy at its default (`self`) and origin
 isolation intact, which WebMCP requires.
 
-## Make it your game
-
-Coartifex is profile-driven. It ships with HSR-style and Genshin-style
-profiles. To support any other gacha, paste a profile JSON in the UI:
-
-```json
-{
-  "id": "mygame",
-  "label": "My Game",
-  "slots": { "head": { "label": "Head", "fixedMain": "hpPercent" }, "...": {} },
-  "substats": { "critRate": { "label": "CRIT Rate", "maxRoll": 0.072 } },
-  "roleWeights": { "dps": { "critRate": 1.0 } },
-  "sets": { "setA": { "label": "Set A", "type": "relic", "domain": "Some Cavern", "bonus2": "+x", "bonus4": "+y" } },
-  "characters": { "hero": { "label": "Hero", "role": "dps", "element": "Fire", "sets": ["setA"], "wantedMain": { "body": ["critRate"] }, "blurb": "..." } }
-}
-```
-
-The scoring engine reads only the profile, so a new game needs no code changes.
-
 ## Demo video
 
-Record a public, under-3-minute demo: show the WebMCP status badge go active, add
-a few relics, click Suggest build and Plan farm, then in the WebMCP inspector call
-`evaluate_relic` and `save_loadout` and approve the staged change in the UI. No
-account or upload is needed.
+Record a public, under-3-minute demo: paste a contract (or load the sample), show
+the WebMCP badge go active, ask the agent to extract the key terms, then in the
+inspector call `propose_term` and approve the grounded terms in the UI. Highlight
+a term whose value isn't in the contract and show it flagged as ungrounded —
+that's the differentiator.
 
 ## License
 

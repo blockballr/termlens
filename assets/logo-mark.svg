@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Coartifex mark">
+  <style>
+    .ink { fill: #f2f0ea; }
+    .fold { stroke: #0e0e11; }
+    @media (prefers-color-scheme: light) {
+      .ink { fill: #16161b; }
+      .fold { stroke: #ffffff; }
+    }
+  </style>
+  <g transform="rotate(-6 256 256)">
+    <path class="ink" d="M258 56
+             C 168 100, 118 192, 130 294
+             C 140 382, 198 444, 268 462
+             C 324 434, 358 364, 353 280
+             C 348 206, 316 126, 258 56 Z"/>
+    <path class="fold" d="M322 330 C 288 322, 258 306, 240 282" fill="none" stroke-width="14" stroke-linecap="round"/>
+    <path class="fold" d="M314 372 C 288 362, 268 350, 254 334" fill="none" stroke-width="12" stroke-linecap="round"/>
+    <path class="fold" d="M300 398 C 282 390, 268 382, 258 372" fill="none" stroke-width="10" stroke-linecap="round"/>
+    <path d="M228 132 L 240 146 L 228 160 L 216 146 Z" fill="#e6c068"/>
+  </g>
+</svg>

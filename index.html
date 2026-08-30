@@ -1,84 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Coartifex - a gacha relic co-pilot for people and their agents</title>
-  <meta name="description" content="A browser companion that scores relics, suggests builds, and plans your farm route. Exposes WebMCP tools so an AI agent can do it with you." />
-  <!-- Open Graph: replace the example URLs with the real deploy URL before going live. -->
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Coartifex" />
-  <meta property="og:title" content="Coartifex - a gacha relic co-pilot for people and their agents" />
-  <meta property="og:description" content="Score relics, plan builds, and decide what to farm next. WebMCP tools let an AI agent help, while you approve every save." />
-  <meta property="og:url" content="https://coartifex.example/" />
-  <meta property="og:image" content="https://coartifex.example/og-image.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Coartifex relic co-pilot interface" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TermLens - review a contract with your agent</title>
+<meta name="description" content="Paste a contract, let your agent extract the key terms, and approve each one with its source quote. WebMCP-first, human-gated." />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  body { padding: 0 0 60px; }
+  main { max-width: 920px; margin: 0 auto; padding: 30px 20px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .case { font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: var(--color-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .termlist { display: flex; flex-direction: column; gap: 10px; }
+  .term { border: 1.5px solid var(--color-edge-soft); border-radius: var(--radius-chrome); padding: 12px; background: var(--color-inset); }
+  .term.locked { border-color: rgba(230,192,104,0.5); }
+  .term .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .term .kind { font-family: var(--font-mono); font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--color-graphite); }
+  .term .val { font-size: 14px; font-weight: 800; margin: 6px 0; }
+  .term .quote { font-size: 12px; font-weight: 500; color: var(--color-muted); border-left: 2px solid var(--color-pale-stone); padding-left: 8px; line-height: 1.5; }
+  .conf { font-family: var(--font-mono); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: var(--radius-chip); }
+  .conf-high { color: var(--color-gold); box-shadow: inset 0 0 0 1.5px var(--color-gold); }
+  .conf-low { color: var(--color-silver-mist); box-shadow: inset 0 0 0 1.5px var(--color-pale-stone); }
+  .reason { margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--color-gold); }
+  .term .actions { margin-top: 10px; display: flex; gap: 8px; }
+  .approved { font-family: var(--font-mono); font-size: 10px; font-weight: 800; color: var(--color-gold); }
+  textarea { min-height: 120px; }
+</style>
 </head>
 <body>
   <header>
-    <div>
-      <h1>Coartifex</h1>
-      <p class="muted">A gacha relic co-pilot built for people <em>and</em> their agents. Score relics, plan builds, decide what to farm next, and stay in control of every save.</p>
+    <div class="header-card">
+      <div class="titlebar" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot dot-dark"></span></div>
+      <div class="header-body">
+        <div>
+          <h1 class="brandline"><img src="assets/logo-mark.svg" alt="" width="24" height="24" />TermLens</h1>
+          <p class="muted small">Review a contract with your agent. It proposes key terms, grounds each to its source quote, and commits nothing without your approval.</p>
+        </div>
+        <span id="webmcp-status" class="badge">WebMCP: checking...</span>
+      </div>
     </div>
-    <span id="webmcp-status" class="badge">WebMCP: checking...</span>
   </header>
 
   <main>
     <section class="panel">
-      <h2>1. Pick your game</h2>
-      <p class="muted small">Coartifex is profile-driven, so it works for any gacha. Ship HSR and Genshin, or paste your own profile JSON.</p>
+      <h2>Use it with your agent</h2>
+      <p class="muted small">Open this page in ChatGPT's in-app browser, paste the contract below (or let the agent read it), then say "extract the key terms and propose them". The agent proposes, you approve each with its source quote. Open Source the demo contract to try it instantly.</p>
       <div class="row">
-        <select id="profile"></select>
-        <button type="button" id="import-profile">Load imported profile</button>
+        <button type="button" id="load-sample">Load sample contract</button>
+        <a class="mini" href="#" id="reset-terms">Clear approved terms</a>
+        <a class="mini" href="https://termlens.pages.dev" style="text-decoration:none;">Live site</a>
       </div>
-      <textarea id="profile-json" rows="3" placeholder='Paste a profile JSON: { "id", "label", "slots", "substats", "roleWeights", "sets", "characters" }'></textarea>
     </section>
 
     <section class="panel">
-      <h2>2. Add a relic</h2>
-      <div class="row">
-        <select id="relic-slot"></select>
-        <select id="relic-set"></select>
-        <select id="relic-main"></select>
+      <h2>1. The contract</h2>
+      <p class="muted small">Paste the contract text here. It stays in your browser.</p>
+      <textarea id="contract-text" placeholder="Paste the contract or agreement text here..."></textarea>
+      <div class="row" style="margin-top:8px;">
+        <button type="button" id="load-contract">Load contract</button>
+        <span class="muted small" id="contract-status"></span>
       </div>
-      <div class="row">
-        <input id="relic-label" type="text" placeholder="nickname (optional)" />
-        <button type="button" id="add-relic">Add relic</button>
+    </section>
+
+    <section class="panel">
+      <h2>2. Proposed terms (approve each)</h2>
+      <p class="muted small">Terms the agent proposes appear here, staged. Low confidence or ungrounded terms are flagged. Nothing commits until you approve.</p>
+      <div id="staged" class="termlist"><p class="muted small">No terms staged yet. Ask your agent to propose some, or use the buttons below.</p></div>
+      <div class="row" style="margin-top:12px;">
+        <button type="button" id="btn-approve-all">Approve all confirmed</button>
+        <button type="button" id="btn-reject-all">Reject all</button>
       </div>
-      <h3>Substats</h3>
-      <div id="substat-rows"></div>
-      <button type="button" id="add-substat" class="mini">+ add substat</button>
     </section>
 
     <section class="panel">
-      <h2>3. Your inventory</h2>
-      <div id="inventory" class="grid"></div>
+      <h2>3. Your approved summary</h2>
+      <p class="muted small">Once approved, terms land here as a verifiable summary with source quotes.</p>
+      <div id="approved" class="termlist"><p class="muted small">No approved terms yet.</p></div>
     </section>
 
     <section class="panel">
-      <h2>4. Advisor</h2>
+      <h2>Receipts &amp; agent gate</h2>
+      <p class="muted small">Every tool call is logged. Flip the lock to revoke the agent's ability to commit anything.</p>
       <div class="row">
-        <select id="advisor-character"></select>
-        <button type="button" id="suggest-btn">Suggest build</button>
-        <button type="button" id="plan-btn">Plan farm</button>
-      </div>
-      <div id="advisor-output"></div>
-    </section>
-
-    <section class="panel">
-      <h2>5. Saved loadouts</h2>
-      <div id="loadouts" class="grid"></div>
-    </section>
-
-    <section class="panel">
-      <h2>6. Session receipts &amp; agent gate</h2>
-      <p class="muted small">Every tool call is logged as a receipt, and mutating actions only happen after your approval. Turn on the lock to revoke the agent's ability to save entirely.</p>
-      <div class="row">
-        <label><input type="checkbox" id="write-lock" /> Lock saving (revoke agent writes)</label>
+        <label><input type="checkbox" id="write-lock" /> Lock committing (revoke agent writes)</label>
         <button type="button" id="export-receipts" class="mini">Export receipts (JSON)</button>
         <button type="button" id="clear-receipts" class="mini">Clear</button>
       </div>
@@ -93,13 +101,12 @@
   </div>
 
   <footer>
-    <p class="muted small">Everything runs in your browser. No account, no server, no upload. WebMCP lets an agent call the same tools you use above.</p>
+    <p class="muted small">Everything runs in your browser. No account, no upload. WebMCP lets an agent call the same tools you use above.</p>
   </footer>
 
-  <script src="src/profiles.js"></script>
-  <script src="src/engine.js"></script>
-  <script src="src/state.js"></script>
-  <script src="src/tools.js"></script>
-  <script src="src/app.js"></script>
+  <script src="src/term-engine.js"></script>
+  <script src="src/term-state.js"></script>
+  <script src="src/term-tools.js"></script>
+  <script src="src/term-app.js"></script>
 </body>
 </html>

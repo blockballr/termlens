@@ -4,3 +4,7 @@ buildlog.md
 SUBMISSION.md
 SCRIPT.md
 COMMIT_MSG_*.txt
+.brand-preview/
+.wrangler/
+brand.md
+design.md
