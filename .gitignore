@@ -8,3 +8,5 @@ COMMIT_MSG_*.txt
 .wrangler/
 brand.md
 design.md
+AGENTS.md
+STATUS.md

@@ -1,0 +1,64 @@
+name: Static site validation gate
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate site (gate)
+        id: gate
+        continue-on-error: true
+        shell: bash
+        run: |
+          python .github/scripts/validate.py | tee .github/validation-report.txt
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -eq 0 ]; then echo "outcome=pass" >> "$GITHUB_OUTPUT"; else echo "outcome=fail" >> "$GITHUB_OUTPUT"; fi
+          # Block merge only on correctness failures; open items surface as warnings.
+          exit 0
+
+      - name: Report back to agent
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.existsSync('.github/validation-report.txt')
+              ? fs.readFileSync('.github/validation-report.txt', 'utf8') : '(no report)';
+            const outcome = '${{ steps.gate.outputs.outcome }}';
+            const marker = '## ⚙️ TermLens validation gate';
+            const report = marker + ' — ' + (outcome === 'pass' ? '✅ PASS' : '❌ FAIL')
+              + '\n\n```\n' + body + '\n```\n\n'
+              + (outcome === 'pass'
+                ? 'Correctness checks pass. Open items still surface as warnings above — address them via `STATUS.md` before merge.'
+                : 'Correctness checks failed. Fix the errors above, then re-push to re-trigger this gate (it must be green to merge).');
+            const owner = context.repo.owner, repo = context.repo.repo;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number: context.issue.number });
+            const prior = comments.find(c => c.body && c.body.startsWith(marker));
+            if (prior) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: prior.id, body: report });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: context.issue.number, body: report });
+            }
+
+      - name: Enforce gate
+        if: steps.gate.outputs.outcome == 'fail'
+        shell: bash
+        run: |
+          echo "Validation gate failed — blocking merge."
+          exit 1
+
+permissions:
+  contents: read
+  pull-requests: write
