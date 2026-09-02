@@ -8,8 +8,8 @@ Review a contract or agreement with your **agent**. TermLens lets an AI agent
 read a document and propose the key terms (renewal date, termination, notice
 period, payment, amounts, governing law, obligations, confidentiality,
 non-compete, liability cap). Each proposed term is **grounded to the exact
-sentence it came from** and confidence-scored, and nothing commits without your
-approval.
+sentence it came from** and confidence-scored, each term can be explained in
+plain language, and nothing commits without your approval.
 
 Because it exposes **WebMCP** tools, an agent in ChatGPT's in-app browser (or
 Chrome with WebMCP enabled) can do the tedious extraction *with* you, in the same
@@ -76,6 +76,7 @@ each result before it's taken on faith.
 | `approve_term` | no | Commits a staged term after human approval |
 | `reject_term` | no | Discards a staged term |
 | `summarize_terms` | yes | Returns approved terms with their source quotes |
+| `interpret_term` | yes | Explains what a proposed term means in plain language, for context, not legal advice |
 
 ## Verifiable by construction
 
