@@ -10,3 +10,13 @@ brand.md
 design.md
 AGENTS.md
 STATUS.md
+
+# local-only brand assets (the logos stay; these don't)
+favicon.ico
+og-about.png
+about.html
+onepager.html
+favicon-mark.html
+og-card.html
+og-repo.png
+/logo-mark.svg

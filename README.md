@@ -1,5 +1,9 @@
 # TermLens
 
+<p align="center">
+  <img src="github-banner.png" alt="TermLens" width="520" />
+</p>
+
 Review a contract or agreement with your **agent**. TermLens lets an AI agent
 read a document and propose the key terms (renewal date, termination, notice
 period, payment, amounts, governing law, obligations, confidentiality,
@@ -11,6 +15,33 @@ Because it exposes **WebMCP** tools, an agent in ChatGPT's in-app browser (or
 Chrome with WebMCP enabled) can do the tedious extraction *with* you, in the same
 page, while you stay in control of every committed term. It runs entirely in
 your browser: no account, no server, no upload of the contract.
+
+## Architecture
+
+Four modules, one boundary. `term-engine.js` is pure grounding logic: if a
+value is given it must appear in the quoted sentence, or the term is flagged
+ungrounded. No DOM, no storage, no WebMCP. `term-state.js` owns the client
+state and the human gate: terms are staged as tokens and only commit on
+approval, with session receipts and an owner write-lock. `term-tools.js` is the
+WebMCP surface, read-only by default. `term-app.js` is the browser UI and
+mirrors the same engine and state, so a human can run the whole flow with no
+agent.
+
+```mermaid
+flowchart TD
+    TXT["contract or agreement text"]
+    ENG["term-engine.js - ground each value to its quoted sentence, score confidence"]
+    ST["term-state.js - stage terms as tokens, commit only on approve, receipts, owner write-lock"]
+    TOOLS["term-tools.js - WebMCP surface"]
+    UI["term-app.js - browser UI"]
+
+    TXT -->|"paste or load sample"| ENG
+    ENG -->|"grounded term, confidence"| ST
+    TOOLS -->|"read-only: describe, extract, summarize"| ENG
+    TOOLS -->|"write: propose, approve, reject behind confirmation"| ST
+    ST -->|"human approval"| UI
+    UI -->|"same engine and state, no agent needed"| ENG
+```
 
 ## Why WebMCP is the right fit
 
@@ -84,14 +115,6 @@ It is a static site. Deploy the folder to Cloudflare Pages, Vercel, Netlify,
 GitHub Pages, or ChatGPT Sites. No build step, no backend. The `_headers` file
 keeps the `tools` Permissions-Policy at its default (`self`) and origin
 isolation intact, which WebMCP requires.
-
-## Demo video
-
-Record a public, under-3-minute demo: paste a contract (or load the sample), show
-the WebMCP badge go active, ask the agent to extract the key terms, then in the
-inspector call `propose_term` and approve the grounded terms in the UI. Highlight
-a term whose value isn't in the contract and show it flagged as ungrounded —
-that's the differentiator.
 
 ## License
 
