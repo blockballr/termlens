@@ -25,8 +25,8 @@
       S.appendAudit({ tool: entry.tool, input: entry.input, outcome: entry.outcome, detail: entry.detail, source: entry.source || "agent" });
       renderReceipts();
     },
-    showProposal: function (token, term, grounding) {
-      staged[token] = { term: term, grounding: grounding };
+    showProposal: function (token, term, grounding, explanation) {
+      staged[token] = { term: term, grounding: grounding, explanation: explanation || null };
       renderStaged();
       showConfirmBar(term, grounding);
     },
@@ -63,11 +63,12 @@
         "<span class='conf " + confClass + "'>" + Math.round(conf * 100) + "%</span></div>" +
         "<div class='val'>" + escapeHtml(item.term.label) + " = " + escapeHtml(item.term.value) + "</div>" +
         "<div class='quote'>" + escapeHtml(item.grounding ? item.grounding.quote : "") + "</div>" +
-        (item.grounding && item.grounding.reason && !item.grounding.grounded ? "<div class='reason'>" + escapeHtml(item.grounding.reason) + "</div>" : "");
+        (item.grounding && item.grounding.reason && !item.grounding.grounded ? "<div class='reason'>" + escapeHtml(item.grounding.reason) + "</div>" : "") +
+        (item.explanation ? "<div class='explain'><b>What it means:</b> " + escapeHtml(item.explanation) + "</div>" : "");
       const acts = document.createElement("div");
       acts.className = "actions";
       const ap = document.createElement("button");
-      ap.type = "button"; ap.textContent = "Approve";
+      ap.type = "button"; ap.textContent = "Approve"; ap.title = "You've reviewed and accept this term. Approving commits it.";
       ap.onclick = function () {
         S.approveTerm(token);
         delete staged[token];
@@ -82,7 +83,7 @@
         TermLensUI.logTool({ tool: "reject_term", input: { token: "(rejected)" }, outcome: "blocked", detail: { label: item.term.label }, source: "human" });
         renderStaged();
       };
-      acts.appendChild(ap); acts.appendChild(rj);
+      acts.appendChild(btnInterpret); acts.appendChild(ap); acts.appendChild(rj);
       div.appendChild(acts);
       wrap.appendChild(div);
     });
@@ -101,7 +102,8 @@
         "<div class='top'><span class='kind'>" + escapeHtml(a.term.kind) + "</span>" +
         "<span class='approved'>approved</span></div>" +
         "<div class='val'>" + escapeHtml(a.term.label) + " = " + escapeHtml(a.term.value) + "</div>" +
-        "<div class='quote'>" + escapeHtml((a.grounding && a.grounding.quote) || "") + "</div>";
+        "<div class='quote'>" + escapeHtml((a.grounding && a.grounding.quote) || "") + "</div>" +
+        (a.explanation ? "<div class='explain'><b>What it means:</b> " + escapeHtml(a.explanation) + "</div>" : "");
       wrap.appendChild(div);
     });
   }
@@ -145,6 +147,61 @@
     el("contract-status").textContent = text.split(/\s+/).length + " words loaded. Ask your agent to extract terms.";
   }
 
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = function () { reject(new Error("could not load library from " + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function readPdf(file) {
+    const pdfjsLib = window.pdfjsLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let text = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map(function (it) { return it.str; }).join(" ");
+      text += pageText + "\n";
+    }
+    return text;
+  }
+
+  async function readDoc(file) {
+    const docx = window.mammoth;
+    const buf = await file.arrayBuffer();
+    const result = await docx.extractRawText({ arrayBuffer: buf });
+    return result.value || "";
+  }
+
+  async function loadContractFile(file) {
+    const st = el("file-status");
+    const name = (file.name || "").toLowerCase();
+    try {
+      if (name.endsWith(".pdf") || file.type === "application/pdf") {
+        st.textContent = "Reading PDF...";
+        if (!window.pdfjsLib) await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+        el("contract-text").value = await readPdf(file);
+      } else if (name.endsWith(".docx") || name.endsWith(".doc") || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        st.textContent = "Reading Word document...";
+        if (!window.mammoth) await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
+        el("contract-text").value = await readDoc(file);
+      } else {
+        st.textContent = "Reading text file...";
+        el("contract-text").value = await file.text();
+      }
+      st.textContent = "Loaded \u201C" + (file.name || "file") + "\u201D. Review, then Load contract.";
+      doLoadContract();
+    } catch (e) {
+      st.textContent = "Could not read that file: " + e.message + ". Try pasting the text instead.";
+    }
+  }
+
   function approveAllConfirmed() {
     Object.keys(staged).forEach(function (token) {
       const item = staged[token];
@@ -181,11 +238,38 @@
     function on(id, fn) { const n = el(id); if (n) n.onclick = fn; return n; }
     on("load-sample", loadSampleContract);
     on("load-contract", doLoadContract);
+    const fileInput = el("contract-file");
+    if (fileInput) fileInput.onchange = function () {
+      if (fileInput.files && fileInput.files[0]) loadContractFile(fileInput.files[0]);
+      fileInput.value = "";
+    };
+    const dropZone = el("contract-drop");
+    if (dropZone) {
+      ["dragenter", "dragover"].forEach(function (ev) {
+        dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.add("dragover"); });
+      });
+      ["dragleave", "drop"].forEach(function (ev) {
+        dropZone.addEventListener(ev, function (e) { e.preventDefault(); dropZone.classList.remove("dragover"); });
+      });
+      dropZone.addEventListener("drop", function (e) {
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) loadContractFile(f);
+      });
+    }
     on("btn-approve-all", approveAllConfirmed);
     on("btn-reject-all", rejectAll);
     on("reset-terms", function () {
       S.resetTerms();
       renderApproved();
+    });
+    on("clear-contract", function () {
+      el("contract-text").value = "";
+      S.setContractText("");
+      S.resetTerms();
+      Object.keys(staged).forEach(function (k) { delete staged[k]; });
+      renderStaged(); renderApproved(); renderReceipts();
+      el("contract-status").textContent = "Cleared. Everything is wiped from this browser.";
+      el("file-status").textContent = "";
     });
     on("export-receipts", exportReceipts);
     on("clear-receipts", function () { S.clearAudit(); renderReceipts(); });

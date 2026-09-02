@@ -52,6 +52,22 @@
     return s;
   }
 
+  // Does the extracted value carry real content, or is it just a section heading?
+  // A heading-only value (e.g. "Confidentiality", "Non-Compete", "Limitation of
+  // Liability") is grounded-but-useless, so it must be flagged low-confidence.
+  function valueHasSubstance(value) {
+    if (!value) return false;
+    const v = norm(value);
+    if (/\d/.test(v)) return true;                        // has a number (period, amount, date)
+    if (/\$|usd|percent|%|months?|days?|years?|weeks?|parts?|hours?/.test(v)) return true; // has a quantity unit
+    if (/\b(shall|must|agree|liable|not exceed|provided|custody|party|upon|within|prior|unless)\b/.test(v)) return true; // legal action content
+    if (/\b(supreme court|state of|delaware|california|new york|new jersey|texas|washington|england)\b/i.test(v)) return true; // named jurisdiction
+    if (v.split(/\s+/).length >= 5) return true;          // a long phrase is likely real content
+    // heading-only words like "Confidentiality", "Non-Compete", "Limitation of Liability",
+    // "Termination", "Payment", "Fees" have few words and no substance -> not verified
+    return false;
+  }
+
   // Find the best grounding sentence for a proposed term, with a confidence score.
   function findGrounding(text, term) {
     const sentences = splitSentences(text);
@@ -78,6 +94,12 @@
       grounded = false;
       confidence = Math.min(0.45, 0.2 + keyScore * 0.06);
       reason = "The proposed value does not appear in the contract next to this term. Verify the value before approving.";
+    } else if (!valueHasSubstance(value)) {
+      // Grounded but the value is just a section heading (e.g. "Confidentiality").
+      // It's not a real extracted term, so flag it as unverified/low-confidence.
+      grounded = true;
+      confidence = Math.min(0.4, 0.2 + keyScore * 0.04);
+      reason = "The value looks like a section heading, not extracted content. This is likely not the real term. Review carefully.";
     } else {
       grounded = value ? valScore >= 1 : keyScore >= 1;
       confidence = Math.min(0.98, 0.35 + keyScore * 0.12 + valScore * 0.22);

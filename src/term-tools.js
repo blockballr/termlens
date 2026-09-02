@@ -7,21 +7,34 @@
   const S = window.TERMLENS_STATE;
   const E = window.TERMLENS_ENGINE;
 
+  // interpret_term is a thin, agent-facing tool. It does NOT hard-code
+  // interpretation. It hands the agent the term plus its grounded source
+  // sentence, and the calling model (the agent) does the plain-language
+  // reasoning, so interpretation is clause-specific and model-generated.
   function stageProposal(input) {
-    // input: { term: {kind,label,value}, text? } — text optional override
+    // input: { term: {kind,label,value}, explanation?, text? } — text optional override
     const text = input.text || S.getContractText();
     if (!text) throw new Error("No contract text loaded. The human must paste the contract first (or pass `text`).");
     const vres = E.validateTerm(input.term);
     if (!vres.ok) throw new Error(vres.error);
     const grounding = E.findGrounding(text, input.term);
-    const token = S.stageTerm(input.term, grounding);
-    if (window.TermLensUI && window.TermLensUI.showProposal) window.TermLensUI.showProposal(token, input.term, grounding);
+    const explanation = input.term && input.term.explanation;
+    const token = S.stageTerm(input.term, grounding, explanation);
+    if (!token) {
+      return {
+        token: null,
+        skipped: true,
+        reason: "This term is already proposed (or approved). Not staging a duplicate.",
+      };
+    }
+    if (window.TermLensUI && window.TermLensUI.showProposal) window.TermLensUI.showProposal(token, input.term, grounding, explanation);
     return {
       token: token,
       needsApproval: true,
       grounded: grounding.grounded,
       confidence: grounding.confidence,
       quote: grounding.quote,
+      explanation: explanation || null,
       note: grounding.grounded
         ? "Staged. Human must approve to commit."
         : "WARNING: could not ground this term to the contract. Human likely won't approve. Double-check the value.",
@@ -73,7 +86,7 @@
     {
       name: "propose_term",
       title: "Propose a term (needs human approval)",
-      description: "Stage one key term for the contract review. Provide the kind, a short label, the exact value you extracted, and optionally the text. It is grounded against the contract and STAGED only, returning a token. It does NOT persist until the human approves via approve_term. Mutating.",
+      description: "Stage one key term for the contract review. Provide the kind, a short label, the exact value you extracted, and optionally the text. It is grounded against the contract and STAGED only, returning a token. It does NOT persist until the human approves via approve_term. After you propose a term, also call interpret_term on that same term (same kind + value) so the reviewer sees a plain-language explanation without having to ask - they should not need to know about tools. Mutating (staging); interpret_term is read-only and separate.",
       inputSchema: {
         type: "object",
         properties: {
@@ -84,6 +97,7 @@
               kind: { type: "string", description: "One of: renewalDate, terminationClause, noticePeriod, paymentTerm, amount, governingLaw, obligation, confidential, nonCompete, liabilityCap." },
               label: { type: "string", description: "Short human label, e.g. 'Auto-renewal year'." },
               value: { type: "string", description: "The exact value, e.g. '12 months' or '30 days' or 'New York'." },
+              explanation: { type: "string", description: "Optional plain-language interpretation the reviewer will see inline: what this term means, what to check, and the main risk. The reviewer should never have to ask for this." },
             },
             required: ["kind", "label", "value"],
           },
@@ -97,11 +111,11 @@
     {
       name: "propose_terms",
       title: "Propose several terms (needs human approval)",
-      description: "Stage multiple key terms from the contract at once. Each is grounded and STAGED only; each returns a token. The human approves them one by one via approve_term. Mutating.",
+      description: "Stage multiple key terms from the contract at once. Each is grounded and STAGED only; each returns a token. The human approves them one by one via approve_term. After proposing, call interpret_term for each term so the reviewer sees a plain-language explanation in the Proposed terms panel without asking - the reviewer should not need to know about tools. Mutating (staging); interpret_term is read-only and separate.",
       inputSchema: {
         type: "object",
         properties: {
-          terms: { type: "array", items: { type: "object", description: "A term object like propose_term.term." } },
+          terms: { type: "array", items: { type: "object", description: "A term object like propose_term.term (kind, label, value, optional explanation)." } },
           text: { type: "string", description: "Optional contract text; defaults to the loaded document." },
         },
         required: ["terms"],
@@ -137,6 +151,27 @@
         if (!entry) throw new Error("Invalid or expired term token.");
         if (window.TermLensUI && window.TermLensUI.refresh) window.TermLensUI.refresh();
         return { ok: true, rejected: true };
+      },
+    },
+    {
+      name: "interpret_term",
+      title: "Interpret a term in plain language",
+      description: "Explain what a contract term means in plain language and what to look for. Call this to interpret a proposed term for the reviewer. The term's source quote is provided; you reason over it. Read-only - interpreting does not change anything. Context only, not legal advice.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          kind: { type: "string", description: "The term kind, e.g. renewalDate, noticePeriod, indemnification." },
+          label: { type: "string", description: "Short human label." },
+          value: { type: "string", description: "The extracted value, e.g. 'twelve (12) months'." },
+          quote: { type: "string", description: "Optional source sentence from the contract." },
+        },
+        required: ["kind"],
+      },
+      annotations: { readOnlyHint: true },
+      execute: async function (input) {
+        // Thin: hands the term + source quote to the calling model. The model
+        // does the plain-language interpretation - no preset table here.
+        return interpretTerm(input, input.quote);
       },
     },
     {
@@ -193,6 +228,7 @@
 
   function summarize(result) {
     if (!result || typeof result !== "object") return result;
+    if (result.skipped) return { skipped: true, reason: result.reason };
     if (result.token) return { staged: true, grounded: result.grounded, confidence: result.confidence };
     if (result.approved) return { approved: result.approved.length };
     if (result.ok) return { ok: true };
@@ -200,5 +236,26 @@
     return { ok: true };
   }
 
-  window.TERMLENS_TOOLS = { registerAll: registerAll, TOOLS: TOOLS };
+  function interpretTerm(term, quote) {
+    return {
+      kind: term.kind,
+      label: term.label || term.kind,
+      value: term.value || null,
+      sourceQuote: quote || null,
+      groundNote: quote ? "Grounded to the quoted source sentence. Interpret this term for the reviewer." : "No source quote provided. Ask the reviewer for the source before interpreting.",
+      guidance: [
+        "Explain what this term means in plain, non-technical language.",
+        "List what the reviewer should check or verify about it.",
+        "Note the main risk or exposure to watch.",
+        "Optionally cite the source sentence above.",
+        "This is context for review, not legal advice. Say so.",
+      ],
+      note: "Calling model: produce the interpretation from the term and source quote. Do not rely on any preset table.",
+    };
+  }
+
+  window.TERMLENS_TOOLS = {
+    registerAll: registerAll,
+    TOOLS: TOOLS,
+  };
 })();

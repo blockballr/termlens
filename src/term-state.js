@@ -32,10 +32,26 @@
 
   function nextId() { seq += 1; return "t" + Date.now() + "-" + seq; }
 
+  function sameTerm(a, b) {
+    return a && b && a.kind === b.kind && a.label === b.label && a.value === b.value;
+  }
+
+  function isDuplicate(term) {
+    // already approved
+    const appr = state().approved;
+    if (appr.some(function (a) { return sameTerm(a.term, term); })) return true;
+    // already pending (staged but not yet approved)
+    return Object.keys(pending).some(function (k) {
+      return pending[k] && sameTerm(pending[k].term, term);
+    });
+  }
+
   // Stage a proposed term (from the agent). Returns a token; NOT approved yet.
-  function stageTerm(term, grounding) {
+  // If an identical term is already staged or approved, returns null (skipped).
+  function stageTerm(term, grounding, explanation) {
+    if (isDuplicate(term)) return null;
     const token = "term-" + Math.random().toString(36).slice(2, 10);
-    pending[token] = { term: term, grounding: grounding };
+    pending[token] = { term: term, grounding: grounding, explanation: explanation || null };
     return token;
   }
 
@@ -50,7 +66,7 @@
     const entry = consumeTerm(token);
     if (!entry) return null;
     const s = state();
-    s.approved.push({ id: nextId(), term: entry.term, grounding: entry.grounding, at: new Date().toISOString() });
+    s.approved.push({ id: nextId(), term: entry.term, grounding: entry.grounding, explanation: entry.explanation || null, at: new Date().toISOString() });
     write(s);
     approved = s.approved;
     return entry.term;
