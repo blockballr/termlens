@@ -4,18 +4,20 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>TermLens - grounded, gated, yours</title>
-<meta name="description" content="An agent proposes key terms, grounds each to its source quote, and can't save anything without your approval. Everything stays in your browser." />
+<meta name="description" content="An agent proposes key contract terms, grounds each to its source quote, and cannot save anything without your explicit approval. Everything stays in your browser." />
 <meta name="color-scheme" content="light" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="TermLens" />
 <meta property="og:title" content="TermLens - grounded, gated, yours" />
-<meta property="og:description" content="An agent proposes key terms, grounds each to its source quote, and can't save anything without your approval. Everything stays in your browser." />
+<meta property="og:description" content="An agent proposes key contract terms, grounds each to its source quote, and cannot save anything without your explicit approval. Everything stays in your browser." />
 <meta property="og:url" content="https://termlens.pages.dev" />
 <meta property="og:image" content="https://termlens.pages.dev/og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg" /><link rel="icon" href="favicon.ico" /><link rel="apple-touch-icon" href="favicon.ico" />
+<link rel="icon" type="image/svg+xml" href="https://termlens.pages.dev/assets/logo-mark.svg" />
+<link rel="icon" href="https://termlens.pages.dev/favicon.ico" />
+<link rel="apple-touch-icon" href="https://termlens.pages.dev/favicon.ico" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
@@ -32,7 +34,7 @@
       <div class="header-body">
         <div>
           <h1 class="brandline"><img src="assets/logo-mark.svg" alt="" width="24" height="24" />TermLens</h1>
-          <p class="muted small"><strong>Grounded. Gated. Yours.</strong> An agent proposes key terms, grounds each to its source quote, and can't save anything without your yes. Everything stays in your browser.</p>
+          <p class="muted small"><strong>Grounded. Gated. Yours.</strong> An agent extracts key terms and grounds each to its source quote. Nothing gets saved without your explicit approval, and all processing stays in your browser.</p>
         </div>
         <span id="webmcp-status" class="badge">WebMCP: checking...</span>
       </div>
@@ -42,9 +44,10 @@
   <main>
     <section class="panel">
       <h2>Use it with your agent</h2>
-      <p class="muted small">Open this page in ChatGPT's in-app browser, paste the contract below (or let the agent read it), then say "propose the key terms". The agent proposes each with its source quote and a plain-language explanation, and you approve each one.</p>
+      <p class="muted small">Open this page in ChatGPT's in-app browser, load a contract below, then ask your agent to propose the key terms. The agent grounds each term to its source quote and provides a plain-language interpretation before you confirm.</p>
       <div class="row">
         <button type="button" id="load-sample">Load sample contract</button>
+        <button type="button" id="simulate-agent">Simulate Agent</button>
         <a class="mini" href="#" id="reset-terms">Clear approved terms</a>
         <a class="mini" href="https://abouttermlens.pages.dev" style="text-decoration:none;">About the product</a>
       </div>
@@ -52,24 +55,24 @@
 
     <section class="panel dropzone" id="contract-drop">
       <h2>1. The contract</h2>
-      <p class="muted small">Paste the text, drop a PDF or Word file anywhere in this box, or paste from a web page. It stays in your browser.</p>
+      <p class="muted small">Paste contract text, drop a PDF or Word document, or load sample text. All files are processed locally in browser memory.</p>
       <div class="row" style="margin-bottom:10px;">
         <label class="filebtn">Drop or choose a file (PDF, DOC, DOCX, TXT)<input type="file" id="contract-file" accept=".pdf,.doc,.docx,.txt,application/pdf,text/plain" hidden /></label>
         <span class="muted small" id="file-status"></span>
       </div>
-      <textarea id="contract-text" placeholder="Paste the contract or agreement text here, or drop a file above..."></textarea>
+      <textarea id="contract-text" placeholder="Paste contract text here or drop a file..."></textarea>
       <div class="row" style="margin-top:8px;">
         <button type="button" id="load-contract">Load contract</button>
         <button type="button" id="clear-contract" class="mini">Clear</button>
         <span class="muted small" id="contract-status"></span>
       </div>
-      <p class="muted small" style="margin-top:12px;">Your file is read in your browser and discarded. Only the extracted text stays locally - nothing is uploaded, and you can clear it anytime.</p>
+      <p class="muted small" style="margin-top:12px;">All document text remains strictly in local browser memory. No data is sent to external servers.</p>
     </section>
 
     <section class="panel">
       <h2>2. Proposed terms (approve each)</h2>
-      <p class="muted small">Terms the agent proposes appear here, staged. Low confidence or ungrounded terms are flagged. Nothing is saved to your approved terms until you approve.</p>
-      <div id="staged" class="termlist"><p class="muted small">No terms staged yet. Ask your agent to propose some, or use the buttons below.</p></div>
+      <p class="muted small">Terms proposed by the agent appear here in staging. Low confidence or ungrounded values are flagged immediately. Nothing is saved without human approval.</p>
+      <div id="staged" class="termlist"><p class="muted small">No terms staged yet. Ask your agent to propose terms, or click Simulate Agent above.</p></div>
       <div class="row" style="margin-top:12px;">
         <button type="button" id="btn-approve-all">Approve all confirmed</button>
         <button type="button" id="btn-reject-all">Reject all</button>
@@ -78,16 +81,17 @@
 
     <section class="panel">
       <h2>3. Your approved summary</h2>
-      <p class="muted small">Once approved, terms land here as a verifiable summary with source quotes.</p>
+      <p class="muted small">Approved terms are stored as a verifiable audit summary backed by source quotes.</p>
       <div id="approved" class="termlist"><p class="muted small">No approved terms yet.</p></div>
     </section>
 
     <section class="panel">
       <h2>Receipts &amp; agent gate</h2>
-      <p class="muted small">Every tool call is logged. Flip the lock to revoke the agent's ability to save or change anything.</p>
+      <p class="muted small">Every tool execution is logged into an audit trail. Enable the lock to revoke the agent's ability to save or alter state.</p>
       <div class="row">
         <label><input type="checkbox" id="write-lock" /> Lock committing (revoke agent writes)</label>
-        <button type="button" id="export-receipts" class="mini">Export receipts (JSON)</button>
+        <button type="button" id="export-markdown" class="mini">Export summary (.md)</button>
+        <button type="button" id="export-receipts" class="mini">Export receipts (.json)</button>
         <button type="button" id="clear-receipts" class="mini">Clear</button>
       </div>
       <div id="receipts" class="receipts"></div>
@@ -101,7 +105,7 @@
   </div>
 
   <footer>
-    <p class="muted small">Everything runs in your browser. No account, no upload. WebMCP lets an agent call the same tools you use above.</p>
+    <p class="muted small">Everything runs locally in your browser. No account required. WebMCP connects agent interactions directly to structured page tools.</p>
   </footer>
 
   <script src="src/term-engine.js"></script>
