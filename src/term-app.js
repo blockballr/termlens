@@ -35,6 +35,7 @@
 
   function showConfirmBar(term, grounding) {
     const c = el("confirm");
+    if (!c) return;
     const cq = grounding && grounding.quote;
     let msg = "Agent proposes a term: " + term.label + " = \"" + term.value + "\"";
     if (grounding && grounding.grounded) msg += " (" + (grounding.confidence * 100).toFixed(0) + "% conf). Approve?";
@@ -49,8 +50,9 @@
 
   function renderStaged() {
     const wrap = el("staged");
+    if (!wrap) return;
     const keys = Object.keys(staged);
-    if (!keys.length) { wrap.innerHTML = "<p class='muted small'>No terms staged yet. Ask your agent to propose some, or approve from a summary.</p>"; return; }
+    if (!keys.length) { wrap.innerHTML = "<p class='muted small'>No terms staged yet. Ask your agent to propose some, or simulate the agent.</p>"; return; }
     wrap.innerHTML = "";
     keys.forEach(function (token) {
       const item = staged[token];
@@ -83,7 +85,7 @@
         TermLensUI.logTool({ tool: "reject_term", input: { token: "(rejected)" }, outcome: "blocked", detail: { label: item.term.label }, source: "human" });
         renderStaged();
       };
-      acts.appendChild(btnInterpret); acts.appendChild(ap); acts.appendChild(rj);
+      acts.appendChild(ap); acts.appendChild(rj);
       div.appendChild(acts);
       wrap.appendChild(div);
     });
@@ -92,6 +94,7 @@
   function renderApproved() {
     const approved = S.getApproved();
     const wrap = el("approved");
+    if (!wrap) return;
     if (!approved.length) { wrap.innerHTML = "<p class='muted small'>No approved terms yet.</p>"; return; }
     wrap.innerHTML = "";
     approved.forEach(function (a) {
@@ -136,15 +139,17 @@
 5. Non-Compete. For twelve (12) months following termination, Provider shall not provide competing services to Client's direct competitors.
 6. Governing Law. This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware.
 7. Limitation of Liability. Neither party shall be liable for indirect or consequential damages, and each party's total liability shall not exceed the fees paid in the prior twelve (12) months.`;
-    el("contract-text").value = sample;
+    if (el("contract-text")) el("contract-text").value = sample;
     doLoadContract();
   }
 
   function doLoadContract() {
-    const text = el("contract-text").value;
-    if (!text.trim()) { el("contract-status").textContent = "Paste contract text first."; return; }
+    const input = el("contract-text");
+    if (!input) return;
+    const text = input.value;
+    if (!text.trim()) { if (el("contract-status")) el("contract-status").textContent = "Paste contract text first."; return; }
     S.setContractText(text);
-    el("contract-status").textContent = text.split(/\s+/).length + " words loaded. Ask your agent to extract terms.";
+    if (el("contract-status")) el("contract-status").textContent = text.split(/\s+/).length + " words loaded. Ask your agent to extract terms.";
   }
 
   function loadScript(src) {
@@ -202,6 +207,42 @@
     }
   }
 
+  // 1-click agent simulator for fallback environments
+  function simulateAgent() {
+    loadSampleContract();
+    const sampleTerms = [
+      {
+        kind: "renewalDate",
+        label: "Notice Period",
+        value: "30 days",
+        explanation: "Requires written notice at least 30 days prior to term end to prevent auto-renewal."
+      },
+      {
+        kind: "amount",
+        label: "Annual Fee",
+        value: "$48,000",
+        explanation: "Fixed annual total billed quarterly at $12,000 net 30."
+      },
+      {
+        kind: "governingLaw",
+        label: "Jurisdiction",
+        value: "State of Delaware",
+        explanation: "Governing law set to Delaware."
+      }
+    ];
+
+    sampleTerms.forEach(function (term) {
+      const g = E.findGrounding(S.getContractText(), term);
+      const token = S.stageTerm(term, g, term.explanation);
+      if (token) {
+        TermLensUI.logTool({ tool: "propose_term", input: { term: term }, outcome: "ok", detail: { staged: true, confidence: g.confidence }, source: "simulated_agent" });
+      }
+    });
+
+    renderStaged();
+    renderReceipts();
+  }
+
   function approveAllConfirmed() {
     Object.keys(staged).forEach(function (token) {
       const item = staged[token];
@@ -226,10 +267,20 @@
 
   function exportReceipts() {
     const data = JSON.stringify(S.getAudit(), null, 2);
-    const blob = new Blob([data], { type: "application/json" });
+    downloadFile("termlens-receipts.json", data, "application/json");
+  }
+
+  // trigger markdown export download
+  function exportMarkdownSummary() {
+    const md = S.exportMarkdown();
+    downloadFile("termlens-summary.md", md, "text/markdown");
+  }
+
+  function downloadFile(filename, content, type) {
+    const blob = new Blob([content], { type: type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "termlens-receipts.json";
+    a.href = url; a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -238,6 +289,7 @@
     function on(id, fn) { const n = el(id); if (n) n.onclick = fn; return n; }
     on("load-sample", loadSampleContract);
     on("load-contract", doLoadContract);
+    on("simulate-agent", simulateAgent);
     const fileInput = el("contract-file");
     if (fileInput) fileInput.onchange = function () {
       if (fileInput.files && fileInput.files[0]) loadContractFile(fileInput.files[0]);
@@ -263,19 +315,22 @@
       renderApproved();
     });
     on("clear-contract", function () {
-      el("contract-text").value = "";
+      if (el("contract-text")) el("contract-text").value = "";
       S.setContractText("");
       S.resetTerms();
       Object.keys(staged).forEach(function (k) { delete staged[k]; });
       renderStaged(); renderApproved(); renderReceipts();
-      el("contract-status").textContent = "Cleared. Everything is wiped from this browser.";
-      el("file-status").textContent = "";
+      if (el("contract-status")) el("contract-status").textContent = "Cleared. Everything is wiped from this browser.";
+      if (el("file-status")) el("file-status").textContent = "";
     });
     on("export-receipts", exportReceipts);
+    on("export-markdown", exportMarkdownSummary);
     on("clear-receipts", function () { S.clearAudit(); renderReceipts(); });
 
-    el("write-lock").checked = S.getWriteLock();
-    el("write-lock").onchange = function () { S.setWriteLock(el("write-lock").checked); };
+    if (el("write-lock")) {
+      el("write-lock").checked = S.getWriteLock();
+      el("write-lock").onchange = function () { S.setWriteLock(el("write-lock").checked); };
+    }
 
     // Confirm bar buttons
     on("confirm-approve", function () {
@@ -287,7 +342,7 @@
         TermLensUI.logTool({ tool: "approve_term", input: { token: "(approved)" }, outcome: "ok", detail: { label: item.term.label, value: item.term.value }, source: "human" });
         renderStaged(); renderApproved();
       }
-      el("confirm").classList.add("hidden");
+      if (el("confirm")) el("confirm").classList.add("hidden");
       currentToken = null;
     });
     on("confirm-reject", function () {
@@ -298,22 +353,22 @@
         TermLensUI.logTool({ tool: "reject_term", input: { token: "(rejected)" }, outcome: "blocked", detail: { label: item.term.label }, source: "human" });
         renderStaged();
       }
-      el("confirm").classList.add("hidden");
+      if (el("confirm")) el("confirm").classList.add("hidden");
       currentToken = null;
     });
 
     // Override showProposal to also set currentToken for the confirm bar
     const baseShow = TermLensUI.showProposal;
-    TermLensUI.showProposal = function (token, term, grounding) {
+    TermLensUI.showProposal = function (token, term, grounding, explanation) {
       setToken(token);
-      baseShow(token, term, grounding);
+      baseShow(token, term, grounding, explanation);
     };
 
     renderStaged();
     renderApproved();
     renderReceipts();
     TermLensUI.setWebMCPStatus(false);
-    window.TERMLENS_TOOLS.registerAll();
+    if (window.TERMLENS_TOOLS) window.TERMLENS_TOOLS.registerAll();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

@@ -103,6 +103,41 @@
     return out;
   }
 
+  // format approved terms and audit log as markdown
+  function exportMarkdown() {
+    const s = state();
+    const date = new Date().toISOString().split("T")[0];
+    let md = "# termlens approved summary\n\n";
+    md += "**date:** " + date + "\n";
+    md += "**status:** verified and approved\n\n";
+
+    md += "## approved terms\n\n";
+    if (!s.approved || s.approved.length === 0) {
+      md += "*no terms approved yet.*\n\n";
+    } else {
+      md += "| term | value | source quote | confidence |\n";
+      md += "| :--- | :--- | :--- | :--- |\n";
+      s.approved.forEach(function (a) {
+        const q = (a.grounding && a.grounding.quote) ? a.grounding.quote.replace(/\n/g, " ") : "n/a";
+        const conf = a.grounding ? Math.round(a.grounding.confidence * 100) + "%" : "n/a";
+        md += "| **" + a.term.label + "** | " + a.term.value + " | \"" + q + "\" | " + conf + " |\n";
+      });
+      md += "\n";
+    }
+
+    md += "## audit receipts\n\n";
+    if (!audit || audit.length === 0) {
+      md += "*no receipts logged.*\n";
+    } else {
+      audit.forEach(function (r) {
+        const det = r.detail ? JSON.stringify(r.detail) : "";
+        md += "- `[" + r.at + "]` **" + r.tool + "** (" + r.outcome + "): " + det + "\n";
+      });
+    }
+
+    return md;
+  }
+
   window.TERMLENS_STATE = {
     setContractText: setContractText,
     getContractText: getContractText,
@@ -118,5 +153,6 @@
     getAudit: getAudit,
     clearAudit: clearAudit,
     summarizeApproved: summarizeApproved,
+    exportMarkdown: exportMarkdown,
   };
 })();
