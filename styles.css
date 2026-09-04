@@ -309,7 +309,7 @@ footer { padding: 8px 20px 40px; text-align: center; font-size: 12px; font-weigh
 .receipts { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .receipt-row {
   display: grid;
-  grid-template-columns: 160px 70px 60px 1fr;
+  grid-template-columns: 140px 40px 130px 1fr;
   gap: 8px;
   align-items: center;
   border-radius: var(--radius-chip);
@@ -321,8 +321,9 @@ footer { padding: 8px 20px 40px; text-align: center; font-size: 12px; font-weigh
   background: var(--color-cream);
   color: var(--color-muted);
 }
+
 .receipt-row .r-tool { color: var(--color-ink); }
-.receipt-row .r-det { overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.receipt-row .r-det { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
 .receipt-ok .r-out { color: var(--color-ink); }
 .receipt-error, .receipt-blocked { background: var(--color-butter); }
 .receipt-error .r-out, .receipt-blocked .r-out { color: var(--color-ink); }
