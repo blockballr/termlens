@@ -60,13 +60,26 @@
       div.className = "term" + (item.grounding && item.grounding.grounded ? "" : " locked");
       const conf = item.grounding ? item.grounding.confidence : 0;
       const confClass = conf >= 0.55 ? "conf-high" : "conf-low";
+
+      // side-by-side comparison split: source quote on the left, extracted term on the right
       div.innerHTML =
-        "<div class='top'><span class='kind'>" + escapeHtml(item.term.kind) + "</span>" +
-        "<span class='conf " + confClass + "'>" + Math.round(conf * 100) + "%</span></div>" +
-        "<div class='val'>" + escapeHtml(item.term.label) + " = " + escapeHtml(item.term.value) + "</div>" +
-        "<div class='quote'>" + escapeHtml(item.grounding ? item.grounding.quote : "") + "</div>" +
-        (item.grounding && item.grounding.reason && !item.grounding.grounded ? "<div class='reason'>" + escapeHtml(item.grounding.reason) + "</div>" : "") +
-        (item.explanation ? "<div class='explain'><b>What it means:</b> " + escapeHtml(item.explanation) + "</div>" : "");
+        "<div class='top'>" +
+          "<span class='kind'>" + escapeHtml(item.term.kind) + "</span>" +
+          "<span class='conf " + confClass + "'>" + Math.round(conf * 100) + "% confidence</span>" +
+        "</div>" +
+        "<div class='term-split'>" +
+          "<div class='term-source-card'>" +
+            "<h4>Source Quote</h4>" +
+            "<div class='quote'>" + escapeHtml(item.grounding ? item.grounding.quote : "No source quote found") + "</div>" +
+          "</div>" +
+          "<div class='term-highlight-card'>" +
+            "<h4>Extracted Value & Interpretation</h4>" +
+            "<div class='val'>" + escapeHtml(item.term.label) + " = " + escapeHtml(item.term.value) + "</div>" +
+            (item.explanation ? "<div class='explain'><b>What it means:</b> " + escapeHtml(item.explanation) + "</div>" : "") +
+          "</div>" +
+        "</div>" +
+        (item.grounding && item.grounding.reason && !item.grounding.grounded ? "<div class='reason'>" + escapeHtml(item.grounding.reason) + "</div>" : "");
+
       const acts = document.createElement("div");
       acts.className = "actions";
       const ap = document.createElement("button");
@@ -100,7 +113,6 @@
     approved.forEach(function (a) {
       const div = document.createElement("div");
       div.className = "term";
-      const conf = a.grounding ? a.grounding.confidence : 0;
       div.innerHTML =
         "<div class='top'><span class='kind'>" + escapeHtml(a.term.kind) + "</span>" +
         "<span class='approved'>approved</span></div>" +
