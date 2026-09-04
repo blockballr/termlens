@@ -11,7 +11,7 @@
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --radius-card: 0px;
   --radius-button: 0px;
-  --radius-chip: 0px;
+  --radius-chip: 13px;
   --shadow-sticker: 3px 3px 0 0 #000000;
 }
 
@@ -314,20 +314,20 @@ footer { padding: 8px 20px 40px; text-align: center; font-size: 12px; font-weigh
 }
 
 .receipt-row {
-  display: flex !important;
-  flex-wrap: nowrap !important;
-  align-items: center !important;
-  gap: 12px !important;
-  border-radius: var(--radius-chip);
-  border: 1px solid var(--color-ink);
-  padding: 8px 12px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  background: var(--color-cream);
-  color: var(--color-muted);
-  width: 100%;
-  box-sizing: border-box;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 12px !important;
+    border-radius: var(--radius-chip);
+    border: 1px solid var(--color-ink);
+    padding: 8px 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--color-cream);
+    color: var(--color-muted);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .receipt-row .r-tool { 
@@ -357,7 +357,7 @@ footer { padding: 8px 20px 40px; text-align: center; font-size: 12px; font-weigh
   overflow: hidden; 
   text-overflow: ellipsis; 
   white-space: nowrap; 
-  font-weight: 400; 
+  font-weight: 700; 
 }
 
 .receipt-error, .receipt-blocked { background: var(--color-butter); }

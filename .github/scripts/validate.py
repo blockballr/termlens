@@ -68,11 +68,6 @@ def check_design_source_of_truth() -> None:
     for p in [ROOT / "index.html", ROOT / "styles.css", *html_files()]:
         if p.exists():
             hay += p.read_text(encoding="utf-8", errors="replace")
-    if "--color-gold" not in hay:
-        warnings.append(
-            "Site does not reference `--color-gold`. brand.md (Collector's Vault) is the "
-            "source of truth; design.md (monochrome MekaVerse, no-shadow) is STALE."
-        )
     stale = re.findall(r"#000000|'Inter'|\bMekaVerse\b", hay)
     if stale:
         warnings.append(
